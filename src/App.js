@@ -1,33 +1,21 @@
 import React, { Component } from 'react';
 import { PanResponder } from 'react-native';
-import { Screen } from '@shoutem/ui';
+import { Button, Screen, Text } from '@shoutem/ui';
 import Camera from 'react-native-camera';
 import { Surface } from 'gl-react-native';
+import { scaleLinear } from 'd3-scale';
+
+import HelloGL from './HelloGL';
 import Saturate from './Saturate';
 
 export default class App extends Component {
   state = {
     width: null,
-    height: null
-  }
-
-  componentWillMount() {
-    this._panResponder = PanResponder.create({
-      onMoveShouldSetResponderCapture: () => true,
-      onMoveShouldSetPanResponderCapture: () => true,
-
-        onPanResponderGrant: (e, {x0, y0}) => {
-          //start gesture
-        },
-
-        onPanResponderMove: (e, {dx, dy}) => {
-          //gesture progress
-        },
-
-        onPanResponderRelease: (ev, {vx, vy}) => {
-          //gesture complete
-      }
-    });
+    height: null,
+    path: 'https://i.imgur.com/uTP9Xfr.jpg',
+    contrast: 1,
+    brightness: 1,
+    saturation: 1
   }
 
   onLayout = (event) => {
@@ -52,7 +40,39 @@ export default class App extends Component {
   }
 
   start() {
-    this.timer = setInterval(() => this.refreshPic(), 5);
+    this.timer = setInterval(() => this.refreshPic(), 8);
+  }
+
+  dragScaleX = scaleLinear()
+  dragScaleY = scaleLinear()
+
+  componentWillMount() {
+    this._panResponder = PanResponder.create({
+      onMoveShouldSetResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+
+        onPanResponderGrant: (e, {x0, y0}) => {
+          //start gesture
+          const { width, height } = this.state;
+
+          this.dragScaleX
+            .domain([ -x0, width-x0])
+            .range([1, -1]);
+        },
+
+        onPanResponderMove: (e, {dx, dy}) => {
+          //gesture progress
+          this.setState({
+            saturation: 1 + this.dragScaleX(dx),
+            brightness: 1 + this.dragScaleY(dy)
+          });
+        },
+
+        onPanResponderRelease: (ev, {vx, vy}) => {
+          //gesture complete
+          console.log('released');
+      }
+    });
   }
 
   onComponentWillUnmount() {
@@ -60,28 +80,37 @@ export default class App extends Component {
   }
 
   render() {
-    const { width, height } = this.state;
+    const { 
+      width, 
+      height,
+      brightness,
+      contrast,
+      saturation
+    } = this.state;
+
     const filter = {
-      contrast: 1,
-      saturation: 1,
-      saturation: 1,
-      brightness: 1
+      contrast,
+      saturation,
+      brightness
     }
 
     if (width && height) {
       return (
-        <Screen onLayout={this.onLayout}>
+        <Screen 
+          onLayout={this.onLayout}
+          {...this._panResponder.panHandlers}
+        >  
           <Camera 
             style={{flex: 1}} 
             ref={cam => this.camera=cam}
             captureQuality={Camera.constants.CaptureQuality['720p']}
             aspect={Camera.constants.Aspect.fill}
           >
-          <Surface style={{ width, height }}>
-            <Saturate {...filter}>
-              {{ uri: 'https://i.imgur.com/uTP9Xfr.jpg' }}
-            </Saturate>
-          </Surface>
+            <Surface style={{ width, height }}>
+              <Saturate {...filter}>
+                {{ uri: this.state.path }}
+              </Saturate>
+            </Surface>
           </Camera>
         </Screen>
       );

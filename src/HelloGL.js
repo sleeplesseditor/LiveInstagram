@@ -24,6 +24,5 @@ export default class HelloGL extends Component {
         return (
             <Node shader={shaders.helloGL} />
         );
-        
     }
 }
